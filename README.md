@@ -1,7 +1,10 @@
 # pypi
 
-This repo is pretty much a clone of https://github.com/Akshaya-T/pypi.git from the tutorial found here:
+This repo was pretty much a clone of https://github.com/Akshaya-T/pypi.git from the tutorial found here:
 https://python.plainenglish.io/private-pypi-server-on-kubernetes-7df169864972
+
+I have written the resource definitions in Go though. After compiling the executable, it can be used
+to generate the required yaml files, fully parameterized, at least as far as I felt like it.
 
 ## Starting minikube cluster
 
@@ -17,7 +20,7 @@ minikube start --insecure-registry="$(ipconfig getifaddr en0):5000"
 ## Local docker registry
 
 This creates a local docker registry where the Kubernetes pod can pull our Docker image from.
-This can of course be a remote one as well.
+This can of course be a remote one as well (For example `jmeidam/pypiserver`).
 
 ```bash
 docker run -d -p 5000:5000 --name registry registry:2
@@ -35,8 +38,22 @@ docker build -t localhost:5000/pypi-server .
 docker push localhost:5000/pypi-server
 ```
 
+## Build Go executable and generate yaml files
 
-## Apply kubernetes files in k8s folder
+Ensure you have Go installed ofcourse.
+Move into the `gok8s` folder and run `go build -o ./pypilocal main.go`.
+This will create an executable `pypilocal` in that folder, which you can run from anywhere.
+
+Generate the yaml files using the following command
+
+```bash
+./pypilocal -outputpath yamls -pypilogins '{"password": "123", "username": "pypi"}' -image 192.123.1.23:5000/pypi-server
+```
+
+Where indeed `192.123.1.23` should be replaced with your localhost IP and the username and password can also be changed to anything you like. Just make sure you save them somewhere to access the pypi service later on.
+
+
+## Apply kubernetes files in generated yaml folder
 
 Do this when you are sure you are in the right workspace and context. When you run `minikube start` it
 appears to set the defaults to the minikube cluster:
@@ -44,8 +61,10 @@ appears to set the defaults to the minikube cluster:
 
 ```bash
 # Make sure to change secret values before apply
-kubectl apply -f k8s/
+kubectl apply -f gok8s/yamls
 ```
+
+Where `gok8s/yamls` is the folder you specified when running `pypilocal`.
 
 
 ## Port Forward and see the PyPi UI
@@ -62,7 +81,7 @@ kubectl port-forward <<pod-name>> 8080:80 --address 0.0.0.0
 This sets the configuration for de server referred to as "local", you can give it any name.
 ```bash
 poetry config repositories.local http://localhost:8080
-poetry config http-basic.local pypi pass
+poetry config http-basic.local pypi 123
 ```
 
 Then run `poetry publish -r local`

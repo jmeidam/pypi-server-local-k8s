@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: pypi-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pypi-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: pypi-server
+    spec:
+      containers:
+      - env:
+        - name: PYPI_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: pypisecret
+        - name: PYPI_PASS
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: pypisecret
+        image: jmeidam/pypiserver
+        imagePullPolicy: Always
+        name: pypi-server
+        ports:
+        - containerPort: 80
+          name: pypi-server
+        resources: {}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /pypi-server/packages
+          name: pypi-packages
+      volumes:
+      - name: pypi-packages
+        persistentVolumeClaim:
+          claimName: pypi-pvc
+status: {}
